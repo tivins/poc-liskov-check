@@ -59,11 +59,12 @@ class ThrowsDetector
      * Détecte les exceptions réellement lancées dans le corps de la méthode
      * via analyse AST (nikic/php-parser).
      *
-     * Analyse intra-méthode uniquement : ne suit pas les appels internes ($this->helper()).
+     * Suit récursivement les appels internes ($this->method()) au sein de la même classe.
      * Gère les cas suivants :
      * - throw new Exception() (direct)
      * - throw conditionnel (if/else)
      * - re-throw dans un catch (catch (E $e) { throw $e; })
+     * - throw transitif via $this->privateMethod()
      *
      * @return string[] Noms des classes d'exception (normalisés sans le \ initial)
      */
@@ -84,7 +85,13 @@ class ThrowsDetector
             return [];
         }
 
-        return $this->extractThrowTypes($methodNode);
+        // Find the enclosing class to resolve $this->method() calls
+        $classNode = $this->findEnclosingClass($stmts, $method->getStartLine(), $method->getEndLine());
+
+        // Track visited methods to prevent infinite recursion (circular calls)
+        $visited = [];
+
+        return $this->extractThrowTypesRecursive($methodNode, $classNode, $visited);
     }
 
     /**
@@ -156,27 +163,94 @@ class ThrowsDetector
     }
 
     /**
-     * Extract all exception types thrown within a method node.
+     * Find the Class_/Enum_ node that contains the given line range.
+     *
+     * @return Stmt\Class_|Stmt\Enum_|null
+     */
+    private function findEnclosingClass(array $stmts, int $startLine, int $endLine): ?Stmt
+    {
+        $found = null;
+
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new class($startLine, $endLine, $found) extends NodeVisitorAbstract {
+            public function __construct(
+                private readonly int $startLine,
+                private readonly int $endLine,
+                private ?Stmt       &$found,
+            ) {
+            }
+
+            public function enterNode(Node $node): ?int
+            {
+                if (
+                    ($node instanceof Stmt\Class_ || $node instanceof Stmt\Enum_)
+                    && $node->getStartLine() <= $this->startLine
+                    && $node->getEndLine() >= $this->endLine
+                ) {
+                    $this->found = $node;
+                    return NodeTraverser::STOP_TRAVERSAL;
+                }
+                return null;
+            }
+        });
+        $traverser->traverse($stmts);
+
+        return $found;
+    }
+
+    /**
+     * Find a ClassMethod by name within a class node.
+     */
+    private function findMethodInClass(Stmt $classNode, string $methodName): ?Stmt\ClassMethod
+    {
+        foreach ($classNode->stmts as $stmt) {
+            if ($stmt instanceof Stmt\ClassMethod && $stmt->name->toString() === $methodName) {
+                return $stmt;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Extract all exception types thrown within a method node, following
+     * $this->method() calls recursively within the same class.
      *
      * Handles:
      * - throw new ClassName() → extracts ClassName
      * - catch (ExType $e) { ... throw $e; } → extracts ExType from the catch clause
+     * - $this->otherMethod() → recursively analyses otherMethod in the same class
      *
+     * @param Stmt\ClassMethod             $methodNode The method to analyze
+     * @param Stmt\Class_|Stmt\Enum_|null  $classNode  The enclosing class (for resolving $this-> calls)
+     * @param array<string, true>          $visited    Set of already-visited method names (prevents infinite recursion)
      * @return string[] Unique exception class names (without leading \)
      */
-    private function extractThrowTypes(Stmt\ClassMethod $methodNode): array
-    {
+    private function extractThrowTypesRecursive(
+        Stmt\ClassMethod $methodNode,
+        ?Stmt            $classNode,
+        array            &$visited,
+    ): array {
+        $methodName = $methodNode->name->toString();
+
+        // Guard against circular calls (A -> B -> A)
+        if (isset($visited[$methodName])) {
+            return [];
+        }
+        $visited[$methodName] = true;
+
         $throws = [];
+        $internalCalls = [];
 
         // Build a map of catch variable names → their caught exception types
         // so we can resolve re-throws like `throw $e;`
         $catchVariableTypes = [];
 
         $traverser = new NodeTraverser();
-        $traverser->addVisitor(new class($throws, $catchVariableTypes) extends NodeVisitorAbstract {
+        $traverser->addVisitor(new class($throws, $catchVariableTypes, $internalCalls) extends NodeVisitorAbstract {
             public function __construct(
                 private array &$throws,
                 private array &$catchVariableTypes,
+                private array &$internalCalls,
             ) {
             }
 
@@ -190,6 +264,16 @@ class ThrowsDetector
                             $this->catchVariableTypes[$varName][] = $type->toString();
                         }
                     }
+                }
+
+                // Detect $this->methodName() calls for recursive analysis
+                if (
+                    $node instanceof Expr\MethodCall
+                    && $node->var instanceof Expr\Variable
+                    && $node->var->name === 'this'
+                    && $node->name instanceof Node\Identifier
+                ) {
+                    $this->internalCalls[] = $node->name->toString();
                 }
 
                 // Detect throw statements (Stmt\Throw_ in php-parser v5 for `throw expr;`)
@@ -223,6 +307,19 @@ class ThrowsDetector
             }
         });
         $traverser->traverse([$methodNode]);
+
+        // Recursively follow $this->method() calls within the same class
+        if ($classNode !== null) {
+            foreach (array_unique($internalCalls) as $calledMethodName) {
+                $calledNode = $this->findMethodInClass($classNode, $calledMethodName);
+                if ($calledNode !== null) {
+                    $throws = array_merge(
+                        $throws,
+                        $this->extractThrowTypesRecursive($calledNode, $classNode, $visited),
+                    );
+                }
+            }
+        }
 
         // Normalize: remove leading backslash and deduplicate
         $throws = array_map(fn(string $t) => ltrim($t, '\\'), $throws);

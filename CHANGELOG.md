@@ -7,9 +7,12 @@
   - Handles `throw new ClassName()` (direct throws)
   - Handles re-throws in catch blocks (`catch (E $e) { throw $e; }`)
   - Handles conditional throws (`if (...) throw new E()`)
+  - Follows `$this->method()` calls recursively within the same class (transitive throw detection)
+  - Circular call protection to prevent infinite recursion
   - Full FQCN resolution via `NameResolver` (supports `use` statements and namespaces)
 - Internal file AST cache in `ThrowsDetector` to avoid re-parsing the same file
 - New example `MyClass4` — class with throw in code but no `@throws` docblock (AST-only detection)
+- New example `MyClass5` — class with throw via private method delegation (transitive AST detection)
 
 ### Changed
 - `LiskovSubstitutionPrincipleChecker::checkThrowsViolations()` now checks both docblock `@throws` and actual throw statements (AST)
