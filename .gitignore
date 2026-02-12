@@ -1,0 +1,7 @@
+# Dependencies
+vendor
+
+# IDEs
+.idea
+.cursor
+.vscode
