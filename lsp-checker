@@ -7,10 +7,8 @@ use Tivins\Process\ClassFinder;
 use Tivins\Process\FormatType;
 use Tivins\Process\StdWriter;
 
-$autoload = __DIR__ . '/vendor/autoload.php';
-if (!is_file($autoload)) {
-    $autoload = dirname(__DIR__) . '/autoload.php';
-}
+# We are in vendor/bin/lsp-checker, so we need to load the autoload.php from the root project
+$autoload = __dir__ . '/../vendor/autoload.php';
 require $autoload;
 
 // --- CLI options -----------------------------------------------------------
