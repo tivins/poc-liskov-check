@@ -104,9 +104,91 @@ final class LiskovSubstitutionPrincipleCheckerTest extends TestCase
         $this->assertEmpty($violations, 'MyClass6 should not violate LSP (covariant return type is allowed)');
     }
 
+    public function testMyClass7HasNoViolationsWithContravariantParameterType(): void
+    {
+        $checker = $this->createChecker();
+        $violations = $checker->check(\MyClass7::class);
+
+        $this->assertEmpty($violations, 'MyClass7 should not violate LSP (contravariant parameter type: RuntimeException → Exception is valid widening)');
+    }
+
+    public function testMyClass8HasNoViolationsWithIdenticalParameterTypes(): void
+    {
+        $checker = $this->createChecker();
+        $violations = $checker->check(\MyClass8::class);
+
+        $this->assertEmpty($violations, 'MyClass8 should not violate LSP (identical parameter types are trivially valid)');
+    }
+
+    /**
+     * Test that the contravariance check detects a violation when the implementation
+     * narrows a parameter type (e.g. contract accepts Exception, child accepts RuntimeException).
+     *
+     * Since PHP itself prevents loading classes with narrowed parameter types (fatal error),
+     * we test the internal `isParameterTypeContravariant` method directly using ReflectionType
+     * objects extracted from valid fixture classes.
+     */
+    public function testContravarianceDetectsViolationOnNarrowedParameterType(): void
+    {
+        $checker = $this->createChecker();
+
+        // Extract ReflectionType for Exception (wide) and RuntimeException (narrow)
+        $wideType = (new \ReflectionParameter([ContravariantFixtureWide::class, 'foo'], 'e'))->getType();
+        $narrowType = (new \ReflectionParameter([ContravariantFixtureNarrow::class, 'foo'], 'e'))->getType();
+
+        $wideContext = new \ReflectionClass(ContravariantFixtureWide::class);
+        $narrowContext = new \ReflectionClass(ContravariantFixtureNarrow::class);
+
+        $method = new \ReflectionMethod($checker, 'isParameterTypeContravariant');
+
+        // Valid contravariance: contract=narrow (RuntimeException), class=wide (Exception) → true
+        $this->assertTrue(
+            $method->invoke($checker, $wideType, $narrowType, $wideContext, $narrowContext),
+            'Exception (wider) should be contravariant with RuntimeException (narrower)'
+        );
+
+        // Invalid contravariance: contract=wide (Exception), class=narrow (RuntimeException) → false
+        $this->assertFalse(
+            $method->invoke($checker, $narrowType, $wideType, $narrowContext, $wideContext),
+            'RuntimeException (narrower) should NOT be contravariant with Exception (wider)'
+        );
+    }
+
+    /**
+     * Test contravariance with untyped parameters.
+     */
+    public function testContravarianceWithUntypedParameters(): void
+    {
+        $checker = $this->createChecker();
+        $method = new \ReflectionMethod($checker, 'isParameterTypeContravariant');
+
+        $wideContext = new \ReflectionClass(ContravariantFixtureWide::class);
+        $narrowContext = new \ReflectionClass(ContravariantFixtureNarrow::class);
+
+        $typedException = (new \ReflectionParameter([ContravariantFixtureWide::class, 'foo'], 'e'))->getType();
+
+        // Contract untyped, class untyped → valid
+        $this->assertTrue(
+            $method->invoke($checker, null, null, $wideContext, $narrowContext),
+            'Both untyped → valid'
+        );
+
+        // Contract typed, class untyped → valid (widening to mixed)
+        $this->assertTrue(
+            $method->invoke($checker, null, $typedException, $wideContext, $narrowContext),
+            'Contract typed, class untyped → valid widening'
+        );
+
+        // Contract untyped, class typed → violation (strengthening precondition)
+        $this->assertFalse(
+            $method->invoke($checker, $typedException, null, $wideContext, $narrowContext),
+            'Contract untyped, class typed → violation'
+        );
+    }
+
     public function testAllExampleClassesAreCheckedWithoutReflectionException(): void
     {
-        $classes = [\MyClass1::class, \MyClass2::class, \MyClass2b::class, \MyClass3::class, \MyClass4::class, \MyClass5::class, \MyClass6::class];
+        $classes = [\MyClass1::class, \MyClass2::class, \MyClass2b::class, \MyClass3::class, \MyClass4::class, \MyClass5::class, \MyClass6::class, \MyClass7::class, \MyClass8::class];
         $checker = $this->createChecker();
 
         foreach ($classes as $className) {
@@ -117,4 +199,18 @@ final class LiskovSubstitutionPrincipleCheckerTest extends TestCase
             }
         }
     }
+}
+
+// ---- Test fixture classes for contravariance unit tests ----
+// These are standalone classes (not implementing any interface) so PHP does not enforce
+// parameter compatibility. We use their ReflectionType objects to test the internal logic.
+
+class ContravariantFixtureWide
+{
+    public function foo(\Exception $e): void {}
+}
+
+class ContravariantFixtureNarrow
+{
+    public function foo(\RuntimeException $e): void {}
 }

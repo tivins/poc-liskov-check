@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-02-13
+
+### Added
+- **Parameter type contravariance check** — `LiskovSubstitutionPrincipleChecker` now validates that overriding methods keep contravariant parameter types (same or wider) with respect to interface/parent contracts. Strengthening a precondition (narrowing a parameter type) is reported as an LSP violation.
+- **Contravariance examples and tests** — Added `MyInterface7`/`MyClass7` (valid widening from `RuntimeException` to `Exception`), `MyInterface8`/`MyClass8` (identical types), and direct unit tests for the contravariance logic (violation detection on narrowed types, untyped parameter handling).
+
 ## [0.7.0] - 2026-02-13
 
 ### Added

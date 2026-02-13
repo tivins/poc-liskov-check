@@ -190,3 +190,41 @@ class MyClass6 implements MyInterface6
         return new UnexpectedValueException("more specific return type");
     }
 }
+
+# ------------------------------------------------------------
+# Example 7: Parameter type contravariance (LSP-compliant)
+# Contract accepts RuntimeException, implementation widens to Exception (supertype).
+# This is valid contravariance: the implementation accepts a wider range of inputs.
+# ------------------------------------------------------------
+
+interface MyInterface7
+{
+    public function handleException(RuntimeException $e): void;
+}
+
+class MyClass7 implements MyInterface7
+{
+    public function handleException(Exception $e): void
+    {
+        // valid: widening from RuntimeException to Exception (contravariant)
+    }
+}
+
+# ------------------------------------------------------------
+# Example 8: Parameter type contravariance with identical types (trivially LSP-compliant)
+# Both contract and implementation use the same type — always valid.
+# Also tests multiple parameters.
+# ------------------------------------------------------------
+
+interface MyInterface8
+{
+    public function transform(string $input, int $flags): string;
+}
+
+class MyClass8 implements MyInterface8
+{
+    public function transform(string $input, int $flags): string
+    {
+        return strtoupper($input);
+    }
+}

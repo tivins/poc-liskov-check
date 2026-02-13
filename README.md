@@ -1,6 +1,6 @@
 # PoC - LSP violations detector
 
-A PHP proof-of-concept that detects **Liskov Substitution Principle (LSP)** violations, focusing on exception contracts and return type covariance between classes and their contracts (interfaces and parent classes).
+A PHP proof-of-concept that detects **Liskov Substitution Principle (LSP)** violations, focusing on exception contracts, return type covariance, and parameter type contravariance between classes and their contracts (interfaces and parent classes).
 
 
 [![CI](https://github.com/tivins/poc-liskov-check/actions/workflows/ci.yml/badge.svg)](https://github.com/tivins/poc-liskov-check/actions/workflows/ci.yml)
@@ -14,6 +14,7 @@ A subclass or implementation must not weaken the contract of its parent or inter
 - If the contract says nothing about exceptions, the implementation must not throw (or declare) any.
 - If the contract documents `@throws SomeException`, the implementation may throw that type or any **subclass** (exception hierarchy is respected; e.g. contract `@throws RuntimeException` allows throwing `UnexpectedValueException`).
 - A method return type must be **covariant** with the contract return type (same type or more specific subtype).
+- A method parameter type must be **contravariant** with the contract parameter type (same type or wider supertype). Narrowing a parameter type strengthens the precondition and is a violation.
 
 Violations are reported in two ways:
 
@@ -30,6 +31,7 @@ Violations are reported in two ways:
   - **Transitive throws** — follows `$this->method()` calls within the same class (e.g. public method calling a private method that throws).
 - **Contract comparison** — checks against all implemented interfaces and the parent class.
 - **Return type covariance** — validates that overriding methods keep LSP-compliant covariant return types.
+- **Parameter type contravariance** — validates that overriding methods do not narrow parameter types (preconditions must not be strengthened).
 - **Cached parsing** — each file is parsed once; results are reused for multiple methods.
 
 ## Requirements
@@ -145,7 +147,7 @@ src/
     └── StdWriter.php                           # stdout / stderr writer with format filtering
 
 lsp-checker                                  # CLI entry point
-liskov-principles-violation-example.php      # Example classes (MyClass1–MyClass6), used by PHPUnit tests
+liskov-principles-violation-example.php      # Example classes (MyClass1–MyClass8), used by PHPUnit tests
 ```
 
 - **ThrowsDetector**  
@@ -154,7 +156,7 @@ liskov-principles-violation-example.php      # Example classes (MyClass1–MyCla
 
 - **LiskovSubstitutionPrincipleChecker**  
   - `check(string $className)` — returns `LspViolation[]`.  
-  - For each method that overrides/implements a contract method, compares both declared and actual throws to the contract, checks return type covariance, and reports any violations.
+  - For each method that overrides/implements a contract method, compares both declared and actual throws to the contract, checks return type covariance and parameter type contravariance, and reports any violations.
 
 - **ClassFinder**  
   - `findClassesInDirectory(string $directory)` — recursively scans a directory for `.php` files, extracts fully qualified class names via AST, loads the files, and returns the class list.
@@ -169,13 +171,15 @@ liskov-principles-violation-example.php      # Example classes (MyClass1–MyCla
 | MyClass4 | No throws     | FAIL   | Throws in code, no docblock (AST-only detection) |
 | MyClass5 | No throws     | FAIL   | Throws via `$this->doSomething()` (transitive AST) |
 | MyClass6 | Return `RuntimeException` | PASS | Returns `UnexpectedValueException` (covariant subtype) |
+| MyClass7 | Param `RuntimeException` | PASS | Accepts `Exception` (contravariant supertype) |
+| MyClass8 | Params `string`, `int` | PASS | Identical parameter types (trivially valid) |
 
 ## Limitations
 
 - **Intra-class only** — only `$this->method()` calls within the same class are followed; calls to other classes or traits are not analyzed.
 - **No flow analysis** — e.g. `$e = new E(); throw $e;` is not resolved (we only handle `throw new X` and re-throws of catch variables).
 - **Reflection-based** — only works on loadable PHP code (files that can be parsed and reflected). When scanning a directory, a `vendor/autoload.php` is loaded automatically if found nearby.
-- **Parameter contravariance not checked yet** — parameter type compatibility (preconditions) is still TODO.
+- **Parameter contravariance via Reflection only** — parameter type contravariance is checked on loaded classes. Since PHP itself enforces parameter compatibility at class load time, most violations are caught by the engine before the checker runs. The check is still useful as part of a comprehensive LSP report.
 
 ## License
 
