@@ -147,16 +147,28 @@ readonly class LiskovSubstitutionPrincipleChecker
     /**
      * Resolve an exception type name to its FQCN using the class namespace.
      * Ensures a leading backslash for global namespace so class_exists/is_subclass_of resolve correctly.
+     *
+     * For unqualified names (e.g. "RuntimeException") in a namespaced class, we check whether
+     * a class with that name actually exists in the namespace. If not, we fall back to the global
+     * namespace. This correctly handles standard PHP exceptions (Exception, RuntimeException, etc.)
+     * used with short names inside namespaced code.
      */
     private function resolveExceptionFqcn(string $type, ReflectionClass $class): string
     {
         $type = ltrim($type, '\\');
+        // Multi-segment name (e.g. "Foo\BarException") → already a namespace path, treat as FQCN
         if (str_contains($type, '\\')) {
             return '\\' . $type;
         }
+        // Unqualified name in a namespaced class: resolve with class_exists check
         $namespace = $class->getNamespaceName();
         if ($namespace !== '') {
-            return '\\' . $namespace . '\\' . $type;
+            $namespacedType = '\\' . $namespace . '\\' . $type;
+            if (class_exists($namespacedType)) {
+                return $namespacedType;
+            }
+            // Not found in namespace → fall back to global (standard PHP exceptions, etc.)
+            return '\\' . $type;
         }
         return '\\' . $type;
     }
