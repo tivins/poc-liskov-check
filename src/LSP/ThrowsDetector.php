@@ -13,6 +13,8 @@ use PhpParser\NodeVisitorAbstract;
 use PhpParser\ParserFactory;
 use ReflectionClass;
 use ReflectionMethod;
+use ReflectionNamedType;
+use ReflectionUnionType;
 
 class ThrowsDetector implements ThrowsDetectorInterface
 {
@@ -174,7 +176,120 @@ class ThrowsDetector implements ThrowsDetectorInterface
         // Track visited methods to prevent infinite recursion (circular calls)
         $visited = [];
 
-        return $this->extractThrowTypesRecursive($methodNode, $classNode, $visited);
+        $variableTypes = $this->buildVariableTypesForMethod($method, $methodNode);
+
+        return $this->extractThrowTypesRecursive($methodNode, $classNode, $visited, $variableTypes);
+    }
+
+    /**
+     * Resolve a type name to FQCN using namespace and use imports (same resolution order as PHP).
+     *
+     * @param array<string, string> $useImports short name → FQCN (without leading \)
+     */
+    private function resolveTypeNameToFqcn(string $typeName, string $namespace, array $useImports): string
+    {
+        $typeName = ltrim($typeName, '\\');
+        if (str_contains($typeName, '\\')) {
+            return $typeName;
+        }
+        if (isset($useImports[$typeName])) {
+            return ltrim($useImports[$typeName], '\\');
+        }
+        if ($namespace !== '') {
+            $namespaced = $namespace . '\\' . $typeName;
+            if (class_exists('\\' . $namespaced) || interface_exists('\\' . $namespaced)) {
+                return $namespaced;
+            }
+        }
+        return $typeName;
+    }
+
+    /**
+     * Build a map of variable name → list of FQCNs for variables that may hold an object reference.
+     * Used to resolve dynamic calls like $obj->method() when $obj is a parameter or assigned from new X().
+     *
+     * - Parameter types: from Reflection (named types and union types; built-in types skipped).
+     * - Local assignments: $var = new ClassName() in the method body (AST).
+     *
+     * @return array<string, list<string>> variable name (without $) → list of FQCNs (without leading \)
+     */
+    private function buildVariableTypesForMethod(ReflectionMethod $method, Stmt\ClassMethod $methodNode): array
+    {
+        $declaring = $method->getDeclaringClass();
+        $namespace = $declaring->getNamespaceName();
+        $useImports = $this->getUseImportsForClass($declaring);
+
+        $types = [];
+
+        foreach ($method->getParameters() as $param) {
+            $paramType = $param->getType();
+            if ($paramType === null) {
+                continue;
+            }
+            $fqcns = [];
+            if ($paramType instanceof ReflectionNamedType) {
+                if (!$paramType->isBuiltin()) {
+                    $fqcns[] = $this->resolveTypeNameToFqcn($paramType->getName(), $namespace, $useImports);
+                }
+            } elseif ($paramType instanceof ReflectionUnionType) {
+                foreach ($paramType->getTypes() as $t) {
+                    if ($t instanceof ReflectionNamedType && !$t->isBuiltin()) {
+                        $fqcns[] = $this->resolveTypeNameToFqcn($t->getName(), $namespace, $useImports);
+                    }
+                }
+            }
+            if ($fqcns !== []) {
+                $types[$param->getName()] = $fqcns;
+            }
+        }
+
+        $localTypes = $this->extractLocalVariableTypesFromMethod($methodNode, $namespace, $useImports);
+        foreach ($localTypes as $varName => $fqcns) {
+            $types[$varName] = $fqcns;
+        }
+
+        return $types;
+    }
+
+    /**
+     * Extract variable → FQCN from assignments $var = new ClassName() in a method body.
+     *
+     * @param array<string, string> $useImports
+     * @return array<string, list<string>>
+     */
+    private function extractLocalVariableTypesFromMethod(Stmt\ClassMethod $methodNode, string $namespace, array $useImports): array
+    {
+        $resolver = fn(string $typeName): string => $this->resolveTypeNameToFqcn($typeName, $namespace, $useImports);
+
+        $types = [];
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new class($resolver, $types) extends NodeVisitorAbstract {
+            /** @param \Closure(string): string $resolver */
+            public function __construct(
+                private readonly \Closure $resolver,
+                private array &$types,
+            ) {
+            }
+
+            public function enterNode(Node $node): ?int
+            {
+                if (!$node instanceof Expr\Assign) {
+                    return null;
+                }
+                if (!$node->var instanceof Expr\Variable || !is_string($node->var->name)) {
+                    return null;
+                }
+                if (!$node->expr instanceof Expr\New_ || !$node->expr->class instanceof Node\Name) {
+                    return null;
+                }
+                $typeName = ltrim($node->expr->class->toString(), '\\');
+                $resolved = ($this->resolver)($typeName);
+                $this->types[$node->var->name] = [ltrim($resolved, '\\')];
+                return null;
+            }
+        });
+        $traverser->traverse([$methodNode]);
+        return $types;
     }
 
     /**
@@ -282,6 +397,30 @@ class ThrowsDetector implements ThrowsDetectorInterface
     }
 
     /**
+     * Build variable types for a callee method when we only have AST (e.g. internal $this->method()).
+     * Uses Reflection to get the method and then buildVariableTypesForMethod.
+     *
+     * @return array<string, list<string>>
+     */
+    private function buildVariableTypesForCallee(Stmt $classNode, string $calledMethodName, Stmt\ClassMethod $calledNode): array
+    {
+        if (!isset($classNode->namespacedName)) {
+            return [];
+        }
+        $classId = $classNode->namespacedName->toString();
+        try {
+            $refClass = new ReflectionClass($classId);
+            if (!$refClass->hasMethod($calledMethodName)) {
+                return [];
+            }
+            $refMethod = $refClass->getMethod($calledMethodName);
+            return $this->buildVariableTypesForMethod($refMethod, $calledNode);
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /**
      * Find a ClassMethod by name within a class node.
      */
     private function findMethodInClass(Stmt $classNode, string $methodName): ?Stmt\ClassMethod
@@ -305,16 +444,19 @@ class ThrowsDetector implements ThrowsDetectorInterface
      * - $this->otherMethod() → recursively analyses otherMethod in the same class
      * - ClassName::staticMethod() → recursively analyses the static method in the external class
      * - (new ClassName())->method() → recursively analyses the instance method in the external class
+     * - $variable->method() → when the variable type is known (parameter type or $var = new X()), follows the call
      *
-     * @param Stmt\ClassMethod             $methodNode The method to analyze
-     * @param Stmt\Class_|Stmt\Enum_|null  $classNode  The enclosing class (for resolving $this-> calls)
-     * @param array<string, true>          $visited    Set of already-visited method names (prevents infinite recursion)
+     * @param Stmt\ClassMethod             $methodNode   The method to analyze
+     * @param Stmt\Class_|Stmt\Enum_|null  $classNode   The enclosing class (for resolving $this-> calls)
+     * @param array<string, true>         $visited      Set of already-visited method names (prevents infinite recursion)
+     * @param array<string, list<string>> $variableTypes Variable name → list of FQCNs (for dynamic calls)
      * @return string[] Unique exception class names (without leading \)
      */
     private function extractThrowTypesRecursive(
         Stmt\ClassMethod $methodNode,
         ?Stmt            $classNode,
         array            &$visited,
+        array            $variableTypes = [],
     ): array {
         $methodName = $methodNode->name->toString();
 
@@ -334,19 +476,22 @@ class ThrowsDetector implements ThrowsDetectorInterface
         $internalCalls = [];
         $externalCalls = [];
         $instanceCalls = [];
+        $dynamicCalls = [];
 
         // Build a map of catch variable names → their caught exception types
         // so we can resolve re-throws like `throw $e;`
         $catchVariableTypes = [];
 
         $traverser = new NodeTraverser();
-        $traverser->addVisitor(new class($throws, $catchVariableTypes, $internalCalls, $externalCalls, $instanceCalls) extends NodeVisitorAbstract {
+        $traverser->addVisitor(new class($throws, $catchVariableTypes, $internalCalls, $externalCalls, $instanceCalls, $dynamicCalls, $variableTypes) extends NodeVisitorAbstract {
             public function __construct(
                 private array &$throws,
                 private array &$catchVariableTypes,
                 private array &$internalCalls,
                 private array &$externalCalls,
                 private array &$instanceCalls,
+                private array &$dynamicCalls,
+                private array $variableTypes,
             ) {
             }
 
@@ -380,6 +525,20 @@ class ThrowsDetector implements ThrowsDetectorInterface
                     && $node->name instanceof Node\Identifier
                 ) {
                     $this->instanceCalls[] = [$node->var->class->toString(), $node->name->toString()];
+                }
+
+                // Detect $variable->methodName() when variable type is known (parameter or local assignment)
+                if (
+                    $node instanceof Expr\MethodCall
+                    && $node->var instanceof Expr\Variable
+                    && is_string($node->var->name)
+                    && $node->var->name !== 'this'
+                    && $node->name instanceof Node\Identifier
+                    && isset($this->variableTypes[$node->var->name])
+                ) {
+                    foreach ($this->variableTypes[$node->var->name] as $fqcn) {
+                        $this->dynamicCalls[] = [ltrim($fqcn, '\\'), $node->name->toString()];
+                    }
                 }
 
                 // Detect ClassName::methodName() static calls for cross-class analysis
@@ -428,9 +587,10 @@ class ThrowsDetector implements ThrowsDetectorInterface
             foreach (array_unique($internalCalls) as $calledMethodName) {
                 $calledNode = $this->findMethodInClass($classNode, $calledMethodName);
                 if ($calledNode !== null) {
+                    $calleeVariableTypes = $this->buildVariableTypesForCallee($classNode, $calledMethodName, $calledNode);
                     $throws = array_merge(
                         $throws,
-                        $this->extractThrowTypesRecursive($calledNode, $classNode, $visited),
+                        $this->extractThrowTypesRecursive($calledNode, $classNode, $visited, $calleeVariableTypes),
                     );
                 }
             }
@@ -452,9 +612,10 @@ class ThrowsDetector implements ThrowsDetectorInterface
                 && $calledClassNorm === $classNode->namespacedName->toString()) {
                 $calledNode = $this->findMethodInClass($classNode, $calledMethod);
                 if ($calledNode !== null) {
+                    $calleeVariableTypes = $this->buildVariableTypesForCallee($classNode, $calledMethod, $calledNode);
                     $throws = array_merge(
                         $throws,
-                        $this->extractThrowTypesRecursive($calledNode, $classNode, $visited),
+                        $this->extractThrowTypesRecursive($calledNode, $classNode, $visited, $calleeVariableTypes),
                     );
                 }
                 continue;
@@ -496,18 +657,20 @@ class ThrowsDetector implements ThrowsDetectorInterface
                     $refMethod->getEndLine(),
                 );
 
+                $calleeVariableTypes = $this->buildVariableTypesForMethod($refMethod, $extMethodNode);
                 $throws = array_merge(
                     $throws,
-                    $this->extractThrowTypesRecursive($extMethodNode, $extClassNode, $visited),
+                    $this->extractThrowTypesRecursive($extMethodNode, $extClassNode, $visited, $calleeVariableTypes),
                 );
             } catch (\ReflectionException) {
                 continue;
             }
         }
 
-        // Recursively follow (new ClassName())->methodName() instance calls to external classes
+        // Recursively follow (new ClassName())->methodName() and $variable->methodName() instance/dynamic calls
+        $allInstanceCalls = array_merge($instanceCalls, $dynamicCalls);
         $seenInstance = [];
-        foreach ($instanceCalls as [$calledClass, $calledMethod]) {
+        foreach ($allInstanceCalls as [$calledClass, $calledMethod]) {
             $instanceKey = $calledClass . '::' . $calledMethod;
             if (isset($seenInstance[$instanceKey])) {
                 continue;
@@ -521,9 +684,10 @@ class ThrowsDetector implements ThrowsDetectorInterface
                 && $calledClassNorm === $classNode->namespacedName->toString()) {
                 $calledNode = $this->findMethodInClass($classNode, $calledMethod);
                 if ($calledNode !== null) {
+                    $calleeVariableTypes = $this->buildVariableTypesForCallee($classNode, $calledMethod, $calledNode);
                     $throws = array_merge(
                         $throws,
-                        $this->extractThrowTypesRecursive($calledNode, $classNode, $visited),
+                        $this->extractThrowTypesRecursive($calledNode, $classNode, $visited, $calleeVariableTypes),
                     );
                 }
                 continue;
@@ -565,9 +729,10 @@ class ThrowsDetector implements ThrowsDetectorInterface
                     $refMethod->getEndLine(),
                 );
 
+                $calleeVariableTypes = $this->buildVariableTypesForMethod($refMethod, $extMethodNode);
                 $throws = array_merge(
                     $throws,
-                    $this->extractThrowTypesRecursive($extMethodNode, $extClassNode, $visited),
+                    $this->extractThrowTypesRecursive($extMethodNode, $extClassNode, $visited, $calleeVariableTypes),
                 );
             } catch (\ReflectionException) {
                 continue;

@@ -57,6 +57,7 @@ Violations are reported in two ways:
   - **Transitive throws** — follows `$this->method()` calls within the same class (e.g. public method calling a private method that throws).
   - **Cross-class static calls** — follows `ClassName::method()` static calls to detect exceptions thrown transitively in external classes.
   - **Cross-class instance calls** — follows `(new ClassName())->method()` calls to detect exceptions thrown by methods on newly created objects.
+  - **Dynamic method calls on variables** — follows `$variable->method()` when the variable type is known: from parameter type hints (e.g. `function doSomething(Helper $helper)`) or from local assignments `$var = new ClassName();` (simple flow). Union types on parameters are supported (all class types are followed).
 - **Contract comparison** — checks against all implemented interfaces and the parent class.
 - **Return type covariance** — validates that overriding methods keep LSP-compliant covariant return types.
 - **Parameter type contravariance** — validates that overriding methods do not narrow parameter types (preconditions must not be strengthened).
@@ -137,7 +138,7 @@ composer test # or vendor/bin/phpunit
 ### Output streams (stdout / stderr)
 
 - **stdout** — Program result only: either human-readable [PASS]/[FAIL] lines (default) or a single JSON report when `--json` is used. Safe to redirect or pipe (e.g. `> out.json`).
-- **stderr** — Progress and summary messages (“Checking…”, “Classes checked: …”, etc.). Suppressed with `--quiet`.
+- **stderr** — Progress and summary messages ("Checking…", "Classes checked: …", etc.). Suppressed with `--quiet`.
 
 So you can capture only the result in a file and keep logs separate.
 
@@ -197,7 +198,7 @@ Total violations: 8
 
 ## Limitations
 
-- **Limited cross-class analysis** — `$this->method()` calls within the same class, `ClassName::method()` static calls, and `(new ClassName())->method()` instance calls to external classes are followed. However, dynamic method calls on variables (e.g. `$obj->method()` where `$obj` is a variable) and trait methods are not analyzed.
+- **Limited dynamic call resolution** — `$variable->method()` calls are followed only when the variable type can be statically resolved: parameter type hints (e.g. `function doSomething(Helper $helper)`) and simple local assignments (`$var = new ClassName()`). Dynamic calls where the variable type cannot be determined (e.g. untyped parameter, factory return, or complex control flow) are not followed. Trait methods used via `use SomeTrait` are analyzed, but `$this->method()` calls within a trait body are not resolved to the using class.
 - **No flow analysis** — e.g. `$e = new E(); throw $e;` is not resolved (we only handle `throw new X` and re-throws of catch variables).
 - **Reflection-based** — only works on loadable PHP code (files that can be parsed and reflected). When scanning, a `vendor/autoload.php` is loaded automatically if found in or near the target paths.
 - **Parameter contravariance via Reflection only** — parameter type contravariance is checked on loaded classes. Since PHP itself enforces parameter compatibility at class load time, most violations are caught by the engine before the checker runs. The check is still useful as part of a comprehensive LSP report.

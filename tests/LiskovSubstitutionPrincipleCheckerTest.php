@@ -25,6 +25,8 @@ use Tivins\LSP\TypeSubtypeChecker;
  * - MyClass2b: interface has @throws RuntimeException, implementation throws UnexpectedValueException (subclass) → no violation (exception hierarchy)
  * - MyClass9: interface has no @throws, implementation calls static method on external class that throws → cross-class AST violation
  * - MyClass10: interface has no @throws, implementation calls (new Helper())->method() that throws → cross-class AST violation
+ * - MyClass11: interface has no @throws, implementation via trait throws → trait method AST violation
+ * - MyClass12: interface has no @throws, implementation calls $helper->doSomethingRisky() (dynamic call on typed param) → AST violation
  */
 final class LiskovSubstitutionPrincipleCheckerTest extends TestCase
 {
@@ -154,6 +156,28 @@ final class LiskovSubstitutionPrincipleCheckerTest extends TestCase
         $this->assertStringContainsString('AST', $reasons);
     }
 
+    public function testMyClass11HasViolationsFromTrait(): void
+    {
+        $checker = $this->createChecker();
+        $violations = $checker->check(\MyClass11::class);
+
+        $this->assertNotEmpty($violations, 'MyClass11 should violate LSP (method from trait throws RuntimeException, contract has no @throws)');
+        $reasons = implode(' ', array_map(fn(LspViolation $v) => $v->reason, $violations));
+        $this->assertStringContainsString('RuntimeException', $reasons);
+        $this->assertStringContainsString('AST', $reasons);
+    }
+
+    public function testMyClass12HasViolationsFromDynamicCall(): void
+    {
+        $checker = $this->createChecker();
+        $violations = $checker->check(\MyClass12::class);
+
+        $this->assertNotEmpty($violations, 'MyClass12 should violate LSP ($helper->doSomethingRisky() throws RuntimeException, contract has no @throws)');
+        $reasons = implode(' ', array_map(fn(LspViolation $v) => $v->reason, $violations));
+        $this->assertStringContainsString('RuntimeException', $reasons);
+        $this->assertStringContainsString('AST', $reasons);
+    }
+
     /**
      * Test that the contravariance check detects a violation when the implementation
      * narrows a parameter type (e.g. contract accepts Exception, child accepts RuntimeException).
@@ -219,7 +243,7 @@ final class LiskovSubstitutionPrincipleCheckerTest extends TestCase
 
     public function testAllExampleClassesAreCheckedWithoutReflectionException(): void
     {
-        $classes = [\MyClass1::class, \MyClass2::class, \MyClass2b::class, \MyClass3::class, \MyClass4::class, \MyClass5::class, \MyClass6::class, \MyClass7::class, \MyClass8::class, \MyClass9::class, \MyClass10::class];
+        $classes = [\MyClass1::class, \MyClass2::class, \MyClass2b::class, \MyClass3::class, \MyClass4::class, \MyClass5::class, \MyClass6::class, \MyClass7::class, \MyClass8::class, \MyClass9::class, \MyClass10::class, \MyClass11::class, \MyClass12::class];
         $checker = $this->createChecker();
 
         foreach ($classes as $className) {

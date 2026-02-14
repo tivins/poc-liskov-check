@@ -1,6 +1,10 @@
 # Changelog
 
-## [Unreleased]
+## [0.14.0] - 2026-02-14
+
+### Added
+- **Dynamic method call analysis** — `$variable->method()` is now followed when the variable type is known: from parameter type hints (e.g. `function doSomething(Helper $helper)`), union types (all class parts are followed), or local assignments `$var = new ClassName();`. Enables detection of LSP violations like Example 12 where the implementation calls a method on a typed parameter that throws. Unit test `testMyClass12HasViolationsFromDynamicCall` and README updated.
+- **Trait exception verification** — Methods implemented by traits are now fully checked for exception contract violations. When a class fulfils a contract method via `use SomeTrait`, the trait method body is analyzed for `@throws` and actual `throw` statements (Example 11: `MyInterface11`/`MyClass11`/`MyTrait11`). Unit test `testMyClass11HasViolationsFromTrait` and README limitations updated accordingly.
 
 ## [0.13.0] - 2026-02-14
 

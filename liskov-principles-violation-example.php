@@ -315,3 +315,30 @@ class MyClass11 implements MyInterface11
      */
     use MyTrait11;
 }
+
+# ------------------------------------------------------------
+# Example 12: Exception thrown via dynamic method call on variable
+# The exception is thrown by a method on an object stored in a variable ($helper->doSomethingRisky()).
+# Only AST analysis with variable type resolution (parameter type) can catch this violation.
+# ------------------------------------------------------------
+
+interface MyInterface12
+{
+    public function doSomething(MyClass12Helper $helper): void;
+}
+
+class MyClass12Helper
+{
+    public function doSomethingRisky(): void
+    {
+        throw new RuntimeException("runtime exception is thrown");
+    }
+}
+
+class MyClass12 implements MyInterface12
+{
+    public function doSomething(MyClass12Helper $helper): void
+    {
+        $helper->doSomethingRisky();
+    }
+}
