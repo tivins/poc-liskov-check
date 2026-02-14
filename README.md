@@ -1,4 +1,4 @@
-# Liskov - LSP violations detector
+# php-liskov - LSP violations detector
 
 A PHP tool that detects **Liskov Substitution Principle (LSP)** violations, focusing on exception contracts, return type covariance, and parameter type contravariance between classes and their contracts (interfaces and parent classes).
 
@@ -70,7 +70,7 @@ Violations are reported in two ways:
 ## Installation
 
 ```bash
-composer require tivins/poc-liskov-check
+composer require tivins/php-liskov
 ```
 
 ## Usage

@@ -1,5 +1,5 @@
 {
-  "name": "tivins/poc-liskov-check",
+  "name": "tivins/php-liskov",
   "version": "0.13.0",
   "description": "PHP Liskov Substitution Principle violation checker",
   "minimum-stability": "stable",
