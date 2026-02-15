@@ -14,17 +14,22 @@ readonly class LspViolation
         public string $methodName,
         public string $contractName,
         public string $reason,
+        public ?string $details = null,
     ) {
     }
 
     public function __toString(): string
     {
-        return sprintf(
+        $out = sprintf(
             '%s::%s() — contract %s — %s',
             $this->className,
             $this->methodName,
             $this->contractName,
             $this->reason,
         );
+        if ($this->details !== null && $this->details !== '') {
+            $out .= "\n         " . str_replace("\n", "\n         ", $this->details);
+        }
+        return $out;
     }
 }

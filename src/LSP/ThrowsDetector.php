@@ -177,7 +177,70 @@ class ThrowsDetector implements ThrowsDetectorInterface
 
         $variableTypes = $this->buildVariableTypesForMethod($method, $methodNode);
 
-        return $this->extractThrowTypesRecursive($methodNode, $classNode, $visited, $variableTypes);
+        $withChains = $this->extractThrowTypesRecursive($methodNode, $classNode, $visited, $variableTypes);
+        return $this->throwEntriesToNames($withChains);
+    }
+
+    /**
+     * @return list<array{exception: string, chains: list<string[]>}>
+     */
+    public function getActualThrowsWithChains(ReflectionMethod $method): array
+    {
+        $filename = $method->getFileName();
+        if ($filename === false) {
+            return [];
+        }
+
+        $stmts = $this->parseFile($filename);
+        if ($stmts === null) {
+            return [];
+        }
+
+        $methodNode = $this->findMethodNode($stmts, $method->getName(), $method->getStartLine(), $method->getEndLine());
+        if ($methodNode === null) {
+            return [];
+        }
+
+        $classNode = $this->findEnclosingClass($stmts, $method->getStartLine(), $method->getEndLine());
+        $visited = [];
+        $variableTypes = $this->buildVariableTypesForMethod($method, $methodNode);
+
+        $withChains = $this->extractThrowTypesRecursive($methodNode, $classNode, $visited, $variableTypes);
+        return $this->aggregateChainsByException($withChains);
+    }
+
+    /**
+     * @param list<array{exception: string, chain: string[]}> $entries
+     * @return string[]
+     */
+    private function throwEntriesToNames(array $entries): array
+    {
+        $names = array_map(fn(array $e) => $e['exception'], $entries);
+        return array_values(array_unique($names));
+    }
+
+    /**
+     * Aggregate entries by exception, collecting unique chains per exception.
+     *
+     * @param list<array{exception: string, chain: string[]}> $entries
+     * @return list<array{exception: string, chains: list<string[]>}>
+     */
+    private function aggregateChainsByException(array $entries): array
+    {
+        $byException = [];
+        foreach ($entries as $e) {
+            $ex = $e['exception'];
+            $chain = $e['chain'];
+            $key = implode("\0", $chain);
+            if (!isset($byException[$ex])) {
+                $byException[$ex] = ['exception' => $ex, 'chains' => [], 'seen' => []];
+            }
+            if (!isset($byException[$ex]['seen'][$key])) {
+                $byException[$ex]['seen'][$key] = true;
+                $byException[$ex]['chains'][] = $chain;
+            }
+        }
+        return array_map(fn(array $a) => ['exception' => $a['exception'], 'chains' => $a['chains']], array_values($byException));
     }
 
     /**
@@ -433,23 +496,14 @@ class ThrowsDetector implements ThrowsDetectorInterface
     }
 
     /**
-     * Extract all exception types thrown within a method node, following
-     * $this->method() calls recursively within the same class,
-     * ClassName::method() static calls and (new ClassName())->method() instance calls across class boundaries.
-     *
-     * Handles:
-     * - throw new ClassName() → extracts ClassName
-     * - catch (ExType $e) { ... throw $e; } → extracts ExType from the catch clause
-     * - $this->otherMethod() → recursively analyses otherMethod in the same class
-     * - ClassName::staticMethod() → recursively analyses the static method in the external class
-     * - (new ClassName())->method() → recursively analyses the instance method in the external class
-     * - $variable->method() → when the variable type is known (parameter type or $var = new X()), follows the call
+     * Extract all exception types thrown within a method node, with call chain for each.
+     * Follows $this->method(), ClassName::method(), (new ClassName())->method(), $var->method().
      *
      * @param Stmt\ClassMethod             $methodNode   The method to analyze
      * @param Stmt\Class_|Stmt\Enum_|null  $classNode   The enclosing class (for resolving $this-> calls)
      * @param array<string, true>         $visited      Set of already-visited method names (prevents infinite recursion)
      * @param array<string, list<string>> $variableTypes Variable name → list of FQCNs (for dynamic calls)
-     * @return string[] Unique exception class names (without leading \)
+     * @return list<array{exception: string, chain: string[]}> Exception names (no leading \) and the chain that leads to it
      */
     private function extractThrowTypesRecursive(
         Stmt\ClassMethod $methodNode,
@@ -459,13 +513,12 @@ class ThrowsDetector implements ThrowsDetectorInterface
     ): array {
         $methodName = $methodNode->name->toString();
 
-        // Build a class-qualified key to prevent infinite recursion across classes
         $classId = ($classNode !== null && isset($classNode->namespacedName))
             ? $classNode->namespacedName->toString()
             : '';
         $visitedKey = $classId . '::' . $methodName;
+        $currentStep = $classId !== '' ? $classId . '::' . $methodName : $methodName;
 
-        // Guard against circular calls (A::x -> B::y -> A::x)
         if (isset($visited[$visitedKey])) {
             return [];
         }
@@ -581,16 +634,22 @@ class ThrowsDetector implements ThrowsDetectorInterface
         });
         $traverser->traverse([$methodNode]);
 
+        // Direct throws in this method: each gets chain = [currentStep]
+        $result = array_map(
+            fn(string $ex) => ['exception' => ltrim($ex, '\\'), 'chain' => [$currentStep]],
+            array_map(fn(string $t) => ltrim($t, '\\'), $throws),
+        );
+
         // Recursively follow $this->method() calls within the same class
         if ($classNode !== null) {
             foreach (array_unique($internalCalls) as $calledMethodName) {
                 $calledNode = $this->findMethodInClass($classNode, $calledMethodName);
                 if ($calledNode !== null) {
                     $calleeVariableTypes = $this->buildVariableTypesForCallee($classNode, $calledMethodName, $calledNode);
-                    $throws = array_merge(
-                        $throws,
-                        $this->extractThrowTypesRecursive($calledNode, $classNode, $visited, $calleeVariableTypes),
-                    );
+                    $callee = $this->extractThrowTypesRecursive($calledNode, $classNode, $visited, $calleeVariableTypes);
+                    foreach ($callee as $e) {
+                        $result[] = ['exception' => $e['exception'], 'chain' => array_merge([$currentStep], $e['chain'])];
+                    }
                 }
             }
         }
@@ -612,10 +671,10 @@ class ThrowsDetector implements ThrowsDetectorInterface
                 $calledNode = $this->findMethodInClass($classNode, $calledMethod);
                 if ($calledNode !== null) {
                     $calleeVariableTypes = $this->buildVariableTypesForCallee($classNode, $calledMethod, $calledNode);
-                    $throws = array_merge(
-                        $throws,
-                        $this->extractThrowTypesRecursive($calledNode, $classNode, $visited, $calleeVariableTypes),
-                    );
+                    $callee = $this->extractThrowTypesRecursive($calledNode, $classNode, $visited, $calleeVariableTypes);
+                    foreach ($callee as $e) {
+                        $result[] = ['exception' => $e['exception'], 'chain' => array_merge([$currentStep], $e['chain'])];
+                    }
                 }
                 continue;
             }
@@ -657,10 +716,10 @@ class ThrowsDetector implements ThrowsDetectorInterface
                 );
 
                 $calleeVariableTypes = $this->buildVariableTypesForMethod($refMethod, $extMethodNode);
-                $throws = array_merge(
-                    $throws,
-                    $this->extractThrowTypesRecursive($extMethodNode, $extClassNode, $visited, $calleeVariableTypes),
-                );
+                $callee = $this->extractThrowTypesRecursive($extMethodNode, $extClassNode, $visited, $calleeVariableTypes);
+                foreach ($callee as $e) {
+                    $result[] = ['exception' => $e['exception'], 'chain' => array_merge([$currentStep], $e['chain'])];
+                }
             } catch (\ReflectionException) {
                 continue;
             }
@@ -684,10 +743,10 @@ class ThrowsDetector implements ThrowsDetectorInterface
                 $calledNode = $this->findMethodInClass($classNode, $calledMethod);
                 if ($calledNode !== null) {
                     $calleeVariableTypes = $this->buildVariableTypesForCallee($classNode, $calledMethod, $calledNode);
-                    $throws = array_merge(
-                        $throws,
-                        $this->extractThrowTypesRecursive($calledNode, $classNode, $visited, $calleeVariableTypes),
-                    );
+                    $callee = $this->extractThrowTypesRecursive($calledNode, $classNode, $visited, $calleeVariableTypes);
+                    foreach ($callee as $e) {
+                        $result[] = ['exception' => $e['exception'], 'chain' => array_merge([$currentStep], $e['chain'])];
+                    }
                 }
                 continue;
             }
@@ -729,18 +788,15 @@ class ThrowsDetector implements ThrowsDetectorInterface
                 );
 
                 $calleeVariableTypes = $this->buildVariableTypesForMethod($refMethod, $extMethodNode);
-                $throws = array_merge(
-                    $throws,
-                    $this->extractThrowTypesRecursive($extMethodNode, $extClassNode, $visited, $calleeVariableTypes),
-                );
+                $callee = $this->extractThrowTypesRecursive($extMethodNode, $extClassNode, $visited, $calleeVariableTypes);
+                foreach ($callee as $e) {
+                    $result[] = ['exception' => $e['exception'], 'chain' => array_merge([$currentStep], $e['chain'])];
+                }
             } catch (\ReflectionException) {
                 continue;
             }
         }
 
-        // Normalize: remove leading backslash and deduplicate
-        $throws = array_map(fn(string $t) => ltrim($t, '\\'), $throws);
-
-        return array_values(array_unique($throws));
+        return $result;
     }
 }

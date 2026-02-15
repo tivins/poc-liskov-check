@@ -97,6 +97,10 @@ final class LiskovSubstitutionPrincipleCheckerTest extends TestCase
         $reasons = implode(' ', array_map(fn(LspViolation $v) => $v->reason, $violations));
         $this->assertStringContainsString('RuntimeException', $reasons);
         $this->assertStringContainsString('AST', $reasons);
+        $astViolations = array_filter($violations, fn(LspViolation $v) => str_contains($v->reason, 'AST'));
+        $this->assertNotEmpty($astViolations, 'At least one violation should be AST-based');
+        $withDetails = array_filter($astViolations, fn(LspViolation $v) => $v->details !== null && $v->details !== '');
+        $this->assertNotEmpty($withDetails, 'AST violations should include call chain details');
     }
 
     public function testMyClass5HasViolationsFromAst(): void

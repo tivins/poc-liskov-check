@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tivins\LSP;
 
+use LogicException;
 use ReflectionClass;
 use ReflectionMethod;
 
@@ -30,6 +31,8 @@ interface ThrowsDetectorInterface
      * Aliased imports like `use Foo\Bar as Baz;` produce ['Baz' => 'Foo\Bar'].
      *
      * @return array<string, string> short name → FQCN (without leading \)
+     * 
+     * @throws LogicException if the class is not a class or interface
      */
     public function getUseImportsForClass(ReflectionClass $class): array;
 
@@ -41,6 +44,20 @@ interface ThrowsDetectorInterface
      * instances ((new ClassName())->method()).
      *
      * @return string[] Exception class names (normalized without leading \)
+     * 
+     * @throws LogicException if the method is not a method
      */
     public function getActualThrows(ReflectionMethod $method): array;
+
+    /**
+     * Same as getActualThrows() but returns, for each exception, the call chain(s)
+     * that lead to it (e.g. entry point → internal/external calls → method that throws).
+     * Used to produce precise violation messages.
+     *
+     * @return list<array{exception: string, chains: list<string[]>}> Each exception (normalized without leading \)
+     *         with one or more chains; each chain is an ordered list of "ClassName::methodName" steps.
+     * 
+     * @throws LogicException if the method is not a method
+     */
+    public function getActualThrowsWithChains(ReflectionMethod $method): array;
 }

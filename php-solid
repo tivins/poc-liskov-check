@@ -140,8 +140,18 @@ $writer->message("Classes checked: " . count($classes));
 $writer->message("Passed: " . (count($classes) - $failedClasses) . " / " . count($classes));
 $writer->message("Total violations: $totalViolations");
 
+$violationsAsArray = array_map(
+    fn($v) => [
+        'className' => $v->className,
+        'methodName' => $v->methodName,
+        'contractName' => $v->contractName,
+        'reason' => $v->reason,
+        'details' => $v->details,
+    ],
+    $allViolations,
+);
 $jsonReport = [
-    'violations' => $allViolations,
+    'violations' => $violationsAsArray,
     'errors' => $allErrors,
 ];
 $writer->content(json_encode($jsonReport, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), FormatType::JSON);

@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.17.0] - 2026-02-15
+
+### Added
+- **Call chain details for AST violations** — When the checker reports an exception "thrown in code (detected via AST)" (e.g. from a transitive call into vendor), the violation now includes the full call chain(s) that lead to the throw. Example: `getUseImportsForClass → parseFile → PhpParser\NodeTraverser::traverse → …`. Shown in both text output (indented under the violation) and in JSON (`details` key). Enables precise identification of where non-contract exceptions originate.
+- **`ThrowsDetectorInterface::getActualThrowsWithChains(ReflectionMethod)`** — Returns each detected exception with one or more call chains (list of "ClassName::methodName" steps). Used by `ThrowsContractRuleChecker` to build violation details.
+- **`LspViolation::$details`** — Optional string for extra context (e.g. formatted call chains). Included in `__toString()` and in CLI JSON output.
+
+### Changed
+- **CLI JSON** — Violations are now serialized as arrays with keys `className`, `methodName`, `contractName`, `reason`, and `details` (optional), so JSON output is stable and tooling can rely on it.
+
 ## [0.16.0] - 2026-02-15
 
 ### Breaking

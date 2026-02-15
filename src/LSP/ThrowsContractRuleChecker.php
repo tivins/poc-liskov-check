@@ -31,7 +31,7 @@ readonly class ThrowsContractRuleChecker implements LspRuleCheckerInterface
 
         $contractThrows = $this->throwsDetector->getDeclaredThrows($contractMethod);
         $classThrowsDeclared = $this->throwsDetector->getDeclaredThrows($classMethod);
-        $classThrowsActual = $this->throwsDetector->getActualThrows($classMethod);
+        $classThrowsWithChains = $this->throwsDetector->getActualThrowsWithChains($classMethod);
 
         // Get use imports for proper FQCN resolution of docblock @throws short names
         $classUseImports = $this->throwsDetector->getUseImportsForClass($class);
@@ -54,10 +54,13 @@ readonly class ThrowsContractRuleChecker implements LspRuleCheckerInterface
         }
 
         // Violation if the class ACTUALLY throws exceptions not allowed by the contract (strict or subclass)
-        foreach ($classThrowsActual as $exceptionType) {
+        foreach ($classThrowsWithChains as $item) {
+            $exceptionType = $item['exception'];
+            $chains = $item['chains'];
             if ($this->isExceptionAllowedByContract($exceptionType, $contractThrows, $class, $contract, $classUseImports, $contractUseImports)) {
                 continue;
             }
+            $details = $this->formatCallChains($chains);
             $violations[] = new LspViolation(
                 className: $class->getName(),
                 methodName: $classMethod->getName(),
@@ -66,10 +69,29 @@ readonly class ThrowsContractRuleChecker implements LspRuleCheckerInterface
                     'throws %s in code (detected via AST) but not allowed by the contract',
                     $exceptionType,
                 ),
+                details: $details,
             );
         }
 
         return $violations;
+    }
+
+    /**
+     * Format call chains for violation details (e.g. "Call chain 1: A::a → B::b → C::c").
+     *
+     * @param list<string[]> $chains Each chain is an ordered list of "ClassName::methodName" steps
+     */
+    private function formatCallChains(array $chains): ?string
+    {
+        if ($chains === []) {
+            return null;
+        }
+        $lines = [];
+        foreach ($chains as $i => $chain) {
+            $step = implode(' → ', $chain);
+            $lines[] = (count($chains) > 1 ? 'Call chain ' . ($i + 1) . ': ' : 'Call chain: ') . $step;
+        }
+        return implode("\n", $lines);
     }
 
     /**
