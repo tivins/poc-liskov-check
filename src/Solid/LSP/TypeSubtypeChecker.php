@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tivins\LSP;
+namespace Tivins\Solid\LSP;
 
 use ReflectionClass;
 use ReflectionIntersectionType;

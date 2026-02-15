@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tivins\LSP\Tests;
+namespace Tivins\Solid\Tests;
 
 use PHPUnit\Framework\TestCase;
 

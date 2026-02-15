@@ -2,11 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Tivins\Process;
+namespace Tivins\Solid\Process;
 
 use InvalidArgumentException;
 use PhpParser\Node;
-use Tivins\LSP\Config;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\NodeVisitorAbstract;
@@ -14,6 +13,7 @@ use PhpParser\ParserFactory;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
+use Tivins\Solid\LSP\Config;
 
 /**
  * Scans a directory recursively for PHP files and extracts fully qualified class names.

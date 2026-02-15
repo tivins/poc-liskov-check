@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Tivins\LSP\Tests;
+namespace Tivins\Solid\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Tivins\LSP\LiskovSubstitutionPrincipleChecker;
-use Tivins\LSP\LspViolation;
-use Tivins\LSP\ParameterTypeContravarianceRuleChecker;
-use Tivins\LSP\ReturnTypeCovarianceRuleChecker;
-use Tivins\LSP\ThrowsContractRuleChecker;
-use Tivins\LSP\ThrowsDetector;
-use Tivins\LSP\TypeSubtypeChecker;
+use Tivins\Solid\LSP\LiskovSubstitutionPrincipleChecker;
+use Tivins\Solid\LSP\LspViolation;
+use Tivins\Solid\LSP\ParameterTypeContravarianceRuleChecker;
+use Tivins\Solid\LSP\ReturnTypeCovarianceRuleChecker;
+use Tivins\Solid\LSP\ThrowsContractRuleChecker;
+use Tivins\Solid\LSP\ThrowsDetector;
+use Tivins\Solid\LSP\TypeSubtypeChecker;
 
 /**
  * Unit tests for LiskovSubstitutionPrincipleChecker using the built-in example classes.

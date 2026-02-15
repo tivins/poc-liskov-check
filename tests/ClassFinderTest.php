@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Tivins\LSP\Tests;
+namespace Tivins\Solid\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Tivins\Process\ClassFinder;
+use Tivins\Solid\Process\ClassFinder;
 
 /**
  * Unit tests for ClassFinder: invalid directory, empty dir, files with/without classes,

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tivins\LSP;
+namespace Tivins\Solid\LSP;
 
 use PhpParser\Node;
 use PhpParser\Node\Expr;
@@ -18,7 +18,7 @@ use ReflectionUnionType;
 
 class ThrowsDetector implements ThrowsDetectorInterface
 {
-    /** @var array<string, Stmt[]> Cache of parsed ASTs keyed by file path */
+    /** @var Stmt[] Cache of parsed ASTs keyed by file path */
     private array $astCache = [];
 
     /** @var array<string, array<string, string>> Cache of use imports keyed by class name */

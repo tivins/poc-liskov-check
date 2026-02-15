@@ -1,6 +1,6 @@
 <?php
 
-namespace Tivins\LSP\Tests\Fixtures;
+namespace Tivins\Solid\Tests\Fixtures;
 
 class ThrowsDetectorFixture
 {

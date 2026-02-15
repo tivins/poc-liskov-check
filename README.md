@@ -103,7 +103,7 @@ Example config file (e.g. copy `config-example.php` to `config.php`):
 
 declare(strict_types=1);
 
-use Tivins\LSP\Config;
+use Tivins\Solid\LSP\Config;
 
 return (new Config())
     ->addDirectory('path/to/folder')

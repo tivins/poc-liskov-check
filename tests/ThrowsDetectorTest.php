@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Tivins\LSP\Tests;
+namespace Tivins\Solid\Tests;
 
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
-use Tivins\LSP\ThrowsDetector;
+use Tivins\Solid\LSP\ThrowsDetector;
 
 /**
  * Unit tests for ThrowsDetector: docblock parsing, AST detection, edge cases.
@@ -30,7 +30,7 @@ final class ThrowsDetectorTest extends TestCase
 
     private function fixtureClass(): string
     {
-        return \Tivins\LSP\Tests\Fixtures\ThrowsDetectorFixture::class;
+        return \Tivins\Solid\Tests\Fixtures\ThrowsDetectorFixture::class;
     }
 
     public function testGetDeclaredThrowsWithNoDocblockReturnsEmpty(): void

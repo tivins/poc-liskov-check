@@ -10,7 +10,7 @@
  * Uses bracketed namespace syntax to define multiple namespaces in one file.
  */
 
-namespace Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions {
+namespace Tivins\Solid\Tests\Fixtures\NsResolution\Exceptions {
 
     class CustomNsException extends \RuntimeException
     {
@@ -21,7 +21,7 @@ namespace Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions {
     }
 }
 
-namespace Tivins\LSP\Tests\Fixtures\NsResolution\OtherNs {
+namespace Tivins\Solid\Tests\Fixtures\NsResolution\OtherNs {
 
     /**
      * Contract in a different namespace (used to test cross-namespace FQCN resolution).
@@ -29,7 +29,7 @@ namespace Tivins\LSP\Tests\Fixtures\NsResolution\OtherNs {
     interface ContractOtherNs
     {
         /**
-         * @throws \Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions\CustomNsException
+         * @throws \Tivins\Solid\Tests\Fixtures\NsResolution\Exceptions\CustomNsException
          */
         public function execute(): void;
     }
@@ -48,9 +48,9 @@ namespace Tivins\LSP\Tests\Fixtures\NsResolution\OtherNs {
     }
 }
 
-namespace Tivins\LSP\Tests\Fixtures\NsResolution {
+namespace Tivins\Solid\Tests\Fixtures\NsResolution {
 
-    use Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions\CustomNsException;
+    use Tivins\Solid\Tests\Fixtures\NsResolution\Exceptions\CustomNsException;
 
     // ---------------------------------------------------------------
     // Scenario 1: FQCN (\RuntimeException) in @throws, same namespace
@@ -108,7 +108,7 @@ namespace Tivins\LSP\Tests\Fixtures\NsResolution {
     interface ContractCustomFqcn
     {
         /**
-         * @throws \Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions\CustomNsException
+         * @throws \Tivins\Solid\Tests\Fixtures\NsResolution\Exceptions\CustomNsException
          */
         public function execute(): void;
     }
@@ -116,11 +116,11 @@ namespace Tivins\LSP\Tests\Fixtures\NsResolution {
     class ClassCustomFqcn implements ContractCustomFqcn
     {
         /**
-         * @throws \Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions\CustomNsException
+         * @throws \Tivins\Solid\Tests\Fixtures\NsResolution\Exceptions\CustomNsException
          */
         public function execute(): void
         {
-            throw new \Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions\CustomNsException('test');
+            throw new \Tivins\Solid\Tests\Fixtures\NsResolution\Exceptions\CustomNsException('test');
         }
     }
 
@@ -132,7 +132,7 @@ namespace Tivins\LSP\Tests\Fixtures\NsResolution {
     interface ContractCustomParent
     {
         /**
-         * @throws \Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions\CustomNsException
+         * @throws \Tivins\Solid\Tests\Fixtures\NsResolution\Exceptions\CustomNsException
          */
         public function execute(): void;
     }
@@ -140,11 +140,11 @@ namespace Tivins\LSP\Tests\Fixtures\NsResolution {
     class ClassCustomSubclass implements ContractCustomParent
     {
         /**
-         * @throws \Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions\SubCustomNsException
+         * @throws \Tivins\Solid\Tests\Fixtures\NsResolution\Exceptions\SubCustomNsException
          */
         public function execute(): void
         {
-            throw new \Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions\SubCustomNsException('test');
+            throw new \Tivins\Solid\Tests\Fixtures\NsResolution\Exceptions\SubCustomNsException('test');
         }
     }
 
@@ -157,7 +157,7 @@ namespace Tivins\LSP\Tests\Fixtures\NsResolution {
     interface ContractUseImport
     {
         /**
-         * @throws \Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions\CustomNsException
+         * @throws \Tivins\Solid\Tests\Fixtures\NsResolution\Exceptions\CustomNsException
          */
         public function execute(): void;
     }
@@ -165,7 +165,7 @@ namespace Tivins\LSP\Tests\Fixtures\NsResolution {
     class ClassUseImport implements ContractUseImport
     {
         /**
-         * @throws \Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions\CustomNsException
+         * @throws \Tivins\Solid\Tests\Fixtures\NsResolution\Exceptions\CustomNsException
          */
         public function execute(): void
         {
@@ -212,10 +212,10 @@ namespace Tivins\LSP\Tests\Fixtures\NsResolution {
     // Both use FQCN for a custom exception (contains \) → resolves correctly → no violation
     // ---------------------------------------------------------------
 
-    class ClassCrossNamespace implements \Tivins\LSP\Tests\Fixtures\NsResolution\OtherNs\ContractOtherNs
+    class ClassCrossNamespace implements \Tivins\Solid\Tests\Fixtures\NsResolution\OtherNs\ContractOtherNs
     {
         /**
-         * @throws \Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions\CustomNsException
+         * @throws \Tivins\Solid\Tests\Fixtures\NsResolution\Exceptions\CustomNsException
          */
         public function execute(): void
         {
@@ -279,7 +279,7 @@ namespace Tivins\LSP\Tests\Fixtures\NsResolution {
     // also has @throws RuntimeException. Both should resolve to \RuntimeException.
     // ---------------------------------------------------------------
 
-    class ClassCrossNsShortName implements \Tivins\LSP\Tests\Fixtures\NsResolution\OtherNs\ContractOtherNsShortName
+    class ClassCrossNsShortName implements \Tivins\Solid\Tests\Fixtures\NsResolution\OtherNs\ContractOtherNsShortName
     {
         /**
          * @throws RuntimeException
@@ -367,11 +367,11 @@ namespace Tivins\LSP\Tests\Fixtures\NsResolution {
     class ClassThrowsSubOfShortCustomException implements ContractShortCustomException
     {
         /**
-         * @throws \Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions\SubCustomNsException
+         * @throws \Tivins\Solid\Tests\Fixtures\NsResolution\Exceptions\SubCustomNsException
          */
         public function execute(): void
         {
-            throw new \Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions\SubCustomNsException('test');
+            throw new \Tivins\Solid\Tests\Fixtures\NsResolution\Exceptions\SubCustomNsException('test');
         }
     }
 }

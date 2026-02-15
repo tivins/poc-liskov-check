@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tivins\Process;
+namespace Tivins\Solid\Process;
 
 class StdWriter
 {

@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Tivins\LSP\Tests;
+namespace Tivins\Solid\Tests;
 
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
-use Tivins\LSP\LiskovSubstitutionPrincipleChecker;
-use Tivins\LSP\LspViolation;
-use Tivins\LSP\ParameterTypeContravarianceRuleChecker;
-use Tivins\LSP\ReturnTypeCovarianceRuleChecker;
-use Tivins\LSP\ThrowsContractRuleChecker;
-use Tivins\LSP\ThrowsDetector;
-use Tivins\LSP\TypeSubtypeChecker;
+use Tivins\Solid\LSP\LiskovSubstitutionPrincipleChecker;
+use Tivins\Solid\LSP\LspViolation;
+use Tivins\Solid\LSP\ParameterTypeContravarianceRuleChecker;
+use Tivins\Solid\LSP\ReturnTypeCovarianceRuleChecker;
+use Tivins\Solid\LSP\ThrowsContractRuleChecker;
+use Tivins\Solid\LSP\ThrowsDetector;
+use Tivins\Solid\LSP\TypeSubtypeChecker;
 
 /**
  * Unit tests for namespace resolution in the LSP checker and ThrowsDetector.
@@ -64,7 +64,7 @@ final class NamespaceResolutionTest extends TestCase
     public function testFqcnInThrowsSameNamespaceNoViolation(): void
     {
         $checker = $this->createChecker();
-        $violations = $checker->check(\Tivins\LSP\Tests\Fixtures\NsResolution\ClassFqcn::class);
+        $violations = $checker->check(\Tivins\Solid\Tests\Fixtures\NsResolution\ClassFqcn::class);
 
         $this->assertEmpty(
             $violations,
@@ -79,7 +79,7 @@ final class NamespaceResolutionTest extends TestCase
     public function testShortNameSameNamespaceNoViolation(): void
     {
         $checker = $this->createChecker();
-        $violations = $checker->check(\Tivins\LSP\Tests\Fixtures\NsResolution\ClassShortName::class);
+        $violations = $checker->check(\Tivins\Solid\Tests\Fixtures\NsResolution\ClassShortName::class);
 
         $this->assertEmpty(
             $violations,
@@ -94,7 +94,7 @@ final class NamespaceResolutionTest extends TestCase
     public function testCustomExceptionFqcnNoViolation(): void
     {
         $checker = $this->createChecker();
-        $violations = $checker->check(\Tivins\LSP\Tests\Fixtures\NsResolution\ClassCustomFqcn::class);
+        $violations = $checker->check(\Tivins\Solid\Tests\Fixtures\NsResolution\ClassCustomFqcn::class);
 
         $this->assertEmpty(
             $violations,
@@ -109,7 +109,7 @@ final class NamespaceResolutionTest extends TestCase
     public function testSubclassOfCustomExceptionNoViolation(): void
     {
         $checker = $this->createChecker();
-        $violations = $checker->check(\Tivins\LSP\Tests\Fixtures\NsResolution\ClassCustomSubclass::class);
+        $violations = $checker->check(\Tivins\Solid\Tests\Fixtures\NsResolution\ClassCustomSubclass::class);
 
         $this->assertEmpty(
             $violations,
@@ -124,7 +124,7 @@ final class NamespaceResolutionTest extends TestCase
     public function testUseImportShortNameInCodeNoViolation(): void
     {
         $checker = $this->createChecker();
-        $violations = $checker->check(\Tivins\LSP\Tests\Fixtures\NsResolution\ClassUseImport::class);
+        $violations = $checker->check(\Tivins\Solid\Tests\Fixtures\NsResolution\ClassUseImport::class);
 
         $this->assertEmpty(
             $violations,
@@ -139,7 +139,7 @@ final class NamespaceResolutionTest extends TestCase
     public function testNoThrowsInContractNamespacedClassIsViolation(): void
     {
         $checker = $this->createChecker();
-        $violations = $checker->check(\Tivins\LSP\Tests\Fixtures\NsResolution\ClassThrowsInNs::class);
+        $violations = $checker->check(\Tivins\Solid\Tests\Fixtures\NsResolution\ClassThrowsInNs::class);
 
         $this->assertNotEmpty(
             $violations,
@@ -156,7 +156,7 @@ final class NamespaceResolutionTest extends TestCase
     public function testAstOnlyDetectionInNamespaceIsViolation(): void
     {
         $checker = $this->createChecker();
-        $violations = $checker->check(\Tivins\LSP\Tests\Fixtures\NsResolution\ClassAstOnlyNs::class);
+        $violations = $checker->check(\Tivins\Solid\Tests\Fixtures\NsResolution\ClassAstOnlyNs::class);
 
         $this->assertNotEmpty(
             $violations,
@@ -174,7 +174,7 @@ final class NamespaceResolutionTest extends TestCase
     public function testCrossNamespaceWithFqcnNoViolation(): void
     {
         $checker = $this->createChecker();
-        $violations = $checker->check(\Tivins\LSP\Tests\Fixtures\NsResolution\ClassCrossNamespace::class);
+        $violations = $checker->check(\Tivins\Solid\Tests\Fixtures\NsResolution\ClassCrossNamespace::class);
 
         $this->assertEmpty(
             $violations,
@@ -189,7 +189,7 @@ final class NamespaceResolutionTest extends TestCase
     public function testTransitiveThrowInNamespaceIsViolation(): void
     {
         $checker = $this->createChecker();
-        $violations = $checker->check(\Tivins\LSP\Tests\Fixtures\NsResolution\ClassTransitiveNs::class);
+        $violations = $checker->check(\Tivins\Solid\Tests\Fixtures\NsResolution\ClassTransitiveNs::class);
 
         $this->assertNotEmpty(
             $violations,
@@ -212,7 +212,7 @@ final class NamespaceResolutionTest extends TestCase
     public function testHierarchyWithGlobalExceptionsInNamespace(): void
     {
         $checker = $this->createChecker();
-        $violations = $checker->check(\Tivins\LSP\Tests\Fixtures\NsResolution\ClassHierarchySubclassNs::class);
+        $violations = $checker->check(\Tivins\Solid\Tests\Fixtures\NsResolution\ClassHierarchySubclassNs::class);
 
         $this->assertEmpty(
             $violations,
@@ -229,7 +229,7 @@ final class NamespaceResolutionTest extends TestCase
     public function testCrossNamespaceShortNameGlobalExceptionNoViolation(): void
     {
         $checker = $this->createChecker();
-        $violations = $checker->check(\Tivins\LSP\Tests\Fixtures\NsResolution\ClassCrossNsShortName::class);
+        $violations = $checker->check(\Tivins\Solid\Tests\Fixtures\NsResolution\ClassCrossNsShortName::class);
 
         $this->assertEmpty(
             $violations,
@@ -244,7 +244,7 @@ final class NamespaceResolutionTest extends TestCase
     public function testShortNameExceptionResolvedToGlobalInNamespace(): void
     {
         $checker = $this->createChecker();
-        $violations = $checker->check(\Tivins\LSP\Tests\Fixtures\NsResolution\ClassThrowsException::class);
+        $violations = $checker->check(\Tivins\Solid\Tests\Fixtures\NsResolution\ClassThrowsException::class);
 
         $this->assertEmpty(
             $violations,
@@ -259,7 +259,7 @@ final class NamespaceResolutionTest extends TestCase
     public function testHierarchyShortNameExceptionAllowsSubclass(): void
     {
         $checker = $this->createChecker();
-        $violations = $checker->check(\Tivins\LSP\Tests\Fixtures\NsResolution\ClassThrowsSubclassOfException::class);
+        $violations = $checker->check(\Tivins\Solid\Tests\Fixtures\NsResolution\ClassThrowsSubclassOfException::class);
 
         $this->assertEmpty(
             $violations,
@@ -280,14 +280,14 @@ final class NamespaceResolutionTest extends TestCase
     {
         $detector = new ThrowsDetector();
         $method = new ReflectionMethod(
-            \Tivins\LSP\Tests\Fixtures\NsResolution\ClassUseImport::class,
+            \Tivins\Solid\Tests\Fixtures\NsResolution\ClassUseImport::class,
             'execute'
         );
 
         $actualThrows = $detector->getActualThrows($method);
 
         $this->assertContains(
-            'Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions\CustomNsException',
+            'Tivins\Solid\Tests\Fixtures\NsResolution\Exceptions\CustomNsException',
             $actualThrows,
             'AST should resolve use-imported short name to full FQCN (without leading backslash)'
         );
@@ -301,7 +301,7 @@ final class NamespaceResolutionTest extends TestCase
     {
         $detector = new ThrowsDetector();
         $method = new ReflectionMethod(
-            \Tivins\LSP\Tests\Fixtures\NsResolution\ClassFqcn::class,
+            \Tivins\Solid\Tests\Fixtures\NsResolution\ClassFqcn::class,
             'execute'
         );
 
@@ -322,14 +322,14 @@ final class NamespaceResolutionTest extends TestCase
     {
         $detector = new ThrowsDetector();
         $method = new ReflectionMethod(
-            \Tivins\LSP\Tests\Fixtures\NsResolution\ClassTransitiveNs::class,
+            \Tivins\Solid\Tests\Fixtures\NsResolution\ClassTransitiveNs::class,
             'execute'
         );
 
         $actualThrows = $detector->getActualThrows($method);
 
         $this->assertContains(
-            'Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions\CustomNsException',
+            'Tivins\Solid\Tests\Fixtures\NsResolution\Exceptions\CustomNsException',
             $actualThrows,
             'AST should resolve transitive throw to FQCN via use import in namespace'
         );
@@ -343,14 +343,14 @@ final class NamespaceResolutionTest extends TestCase
     {
         $detector = new ThrowsDetector();
         $method = new ReflectionMethod(
-            \Tivins\LSP\Tests\Fixtures\NsResolution\ClassCustomFqcn::class,
+            \Tivins\Solid\Tests\Fixtures\NsResolution\ClassCustomFqcn::class,
             'execute'
         );
 
         $declaredThrows = $detector->getDeclaredThrows($method);
 
         $this->assertContains(
-            'Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions\CustomNsException',
+            'Tivins\Solid\Tests\Fixtures\NsResolution\Exceptions\CustomNsException',
             $declaredThrows,
             'getDeclaredThrows should preserve FQCN (without leading backslash) from docblock'
         );
@@ -364,7 +364,7 @@ final class NamespaceResolutionTest extends TestCase
     {
         $detector = new ThrowsDetector();
         $method = new ReflectionMethod(
-            \Tivins\LSP\Tests\Fixtures\NsResolution\ClassShortName::class,
+            \Tivins\Solid\Tests\Fixtures\NsResolution\ClassShortName::class,
             'execute'
         );
 
@@ -389,7 +389,7 @@ final class NamespaceResolutionTest extends TestCase
     public function testContractShortCustomExceptionViaUseImportNoViolation(): void
     {
         $checker = $this->createChecker();
-        $violations = $checker->check(\Tivins\LSP\Tests\Fixtures\NsResolution\ClassThrowsShortCustomException::class);
+        $violations = $checker->check(\Tivins\Solid\Tests\Fixtures\NsResolution\ClassThrowsShortCustomException::class);
 
         $this->assertEmpty(
             $violations,
@@ -406,7 +406,7 @@ final class NamespaceResolutionTest extends TestCase
     public function testSubclassOfShortCustomExceptionViaUseImportNoViolation(): void
     {
         $checker = $this->createChecker();
-        $violations = $checker->check(\Tivins\LSP\Tests\Fixtures\NsResolution\ClassThrowsSubOfShortCustomException::class);
+        $violations = $checker->check(\Tivins\Solid\Tests\Fixtures\NsResolution\ClassThrowsSubOfShortCustomException::class);
 
         $this->assertEmpty(
             $violations,
@@ -425,13 +425,13 @@ final class NamespaceResolutionTest extends TestCase
     public function testGetUseImportsForClassReturnsImportMap(): void
     {
         $detector = new ThrowsDetector();
-        $class = new ReflectionClass(\Tivins\LSP\Tests\Fixtures\NsResolution\ClassFqcn::class);
+        $class = new ReflectionClass(\Tivins\Solid\Tests\Fixtures\NsResolution\ClassFqcn::class);
 
         $imports = $detector->getUseImportsForClass($class);
 
         $this->assertArrayHasKey('CustomNsException', $imports);
         $this->assertSame(
-            'Tivins\LSP\Tests\Fixtures\NsResolution\Exceptions\CustomNsException',
+            'Tivins\Solid\Tests\Fixtures\NsResolution\Exceptions\CustomNsException',
             $imports['CustomNsException'],
             'Use import should map short name to FQCN (without leading backslash)'
         );
@@ -444,7 +444,7 @@ final class NamespaceResolutionTest extends TestCase
     public function testGetUseImportsForClassInDifferentNamespace(): void
     {
         $detector = new ThrowsDetector();
-        $class = new ReflectionClass(\Tivins\LSP\Tests\Fixtures\NsResolution\OtherNs\ContractOtherNs::class);
+        $class = new ReflectionClass(\Tivins\Solid\Tests\Fixtures\NsResolution\OtherNs\ContractOtherNs::class);
 
         $imports = $detector->getUseImportsForClass($class);
 

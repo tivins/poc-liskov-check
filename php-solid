@@ -3,16 +3,16 @@
 
 declare(strict_types=1);
 
-use Tivins\LSP\LiskovSubstitutionPrincipleChecker;
-use Tivins\LSP\ParameterTypeContravarianceRuleChecker;
-use Tivins\LSP\ReturnTypeCovarianceRuleChecker;
-use Tivins\LSP\ThrowsContractRuleChecker;
-use Tivins\LSP\ThrowsDetector;
-use Tivins\LSP\TypeSubtypeChecker;
-use Tivins\Process\ClassFinder;
-use Tivins\Process\FormatType;
-use Tivins\Process\StdWriter;
-use Tivins\LSP\Config;
+use Tivins\Solid\LSP\Config;
+use Tivins\Solid\LSP\LiskovSubstitutionPrincipleChecker;
+use Tivins\Solid\LSP\ParameterTypeContravarianceRuleChecker;
+use Tivins\Solid\LSP\ReturnTypeCovarianceRuleChecker;
+use Tivins\Solid\LSP\ThrowsContractRuleChecker;
+use Tivins\Solid\LSP\ThrowsDetector;
+use Tivins\Solid\LSP\TypeSubtypeChecker;
+use Tivins\Solid\Process\ClassFinder;
+use Tivins\Solid\Process\FormatType;
+use Tivins\Solid\Process\StdWriter;
 
 # Load autoload.php from the root project
 $autoload = 'vendor/autoload.php';
