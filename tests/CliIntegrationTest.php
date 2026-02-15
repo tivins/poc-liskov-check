@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * CLI integration tests: exit code, stdout/stderr, JSON structure.
  *
- * Runs the lsp-checker script and asserts behaviour to detect regressions.
+ * Runs the php-solid script and asserts behaviour to detect regressions.
  */
 final class CliIntegrationTest extends TestCase
 {
@@ -25,7 +25,7 @@ final class CliIntegrationTest extends TestCase
 
     private function runCli(array $args): array
     {
-        $cmd = [self::$phpBinary, self::$projectRoot . DIRECTORY_SEPARATOR . 'lsp-checker', ...$args];
+        $cmd = [self::$phpBinary, self::$projectRoot . DIRECTORY_SEPARATOR . 'php-solid', ...$args];
         $spec = [
             0 => ['pipe', 'r'],
             1 => ['pipe', 'w'],
@@ -59,7 +59,7 @@ final class CliIntegrationTest extends TestCase
         $result = $this->runCli([]);
         $this->assertSame(2, $result['exit'], 'Expected exit code 2 when no directory given');
         $this->assertStringContainsString('Usage:', $result['stderr']);
-        $this->assertStringContainsString('lsp-checker <directory>', $result['stderr']);
+        $this->assertStringContainsString('php-solid <directory>', $result['stderr']);
         $this->assertStringContainsString('--json', $result['stderr']);
         $this->assertStringContainsString('--quiet', $result['stderr']);
     }

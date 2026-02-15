@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.16.0] - 2026-02-15
+
+### Breaking
+
+- **CLI binary** — Renamed from `lsp-checker` to `php-solid`. Update your scripts and CI: use `vendor/bin/php-solid` instead of `vendor/bin/lsp-checker`.
+- **Config example** — Renamed `lsp-config-example.php` to `config-example.php`. Copy to e.g. `config.php` and use `php-solid --config config.php`.
+- **LSP examples** — Moved `liskov-principles-violation-example.php` to `examples/liskov-violation-example.php`. Update any custom paths that referenced the old file.
+
 ## [0.15.0] - 2026-02-14
 
 ## Changed

@@ -68,8 +68,8 @@ foreach (array_slice($argv, 1) as $arg) {
 
 if ($config === null) {
     if ($directory === null) {
-        fwrite(STDERR, "Usage: lsp-checker <directory> [--config <file>] [--json] [--quiet]\n");
-        fwrite(STDERR, "       lsp-checker --config <file> [--json] [--quiet]\n");
+        fwrite(STDERR, "Usage: php-solid <directory> [--config <file>] [--json] [--quiet]\n");
+        fwrite(STDERR, "       php-solid --config <file> [--json] [--quiet]\n");
         fwrite(STDERR, "  <directory>     Path to a directory containing PHP files to check.\n");
         fwrite(STDERR, "  --config <file> Path to a PHP file that returns a " . Config::class . " instance.\n");
         fwrite(STDERR, "  --json          Output violations as JSON.\n");

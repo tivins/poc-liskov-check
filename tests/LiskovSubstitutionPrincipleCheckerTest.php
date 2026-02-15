@@ -16,7 +16,7 @@ use Tivins\LSP\TypeSubtypeChecker;
 /**
  * Unit tests for LiskovSubstitutionPrincipleChecker using the built-in example classes.
  *
- * Example classes are defined in liskov-principles-violation-example.php:
+ * Example classes are defined in examples/liskov-violation-example.php:
  * - MyClass1: interface has no @throws, implementation throws → violation
  * - MyClass2: interface has @throws RuntimeException, implementation throws → no violation
  * - MyClass3: interface has no @throws, implementation (via private) throws → violation
@@ -35,7 +35,7 @@ final class LiskovSubstitutionPrincipleCheckerTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         if (!self::$examplesLoaded) {
-            require_once __DIR__ . '/../liskov-principles-violation-example.php';
+            require_once __DIR__ . '/../examples/liskov-violation-example.php';
             self::$examplesLoaded = true;
         }
     }

@@ -83,7 +83,7 @@ You can run the checker in two ways: by passing a directory, or by using a confi
 Pass a directory path as the first argument. The path is relative to the current working directory. The checker builds a `Config` with that directory and recursively finds all PHP classes to check:
 
 ```bash
-vendor/bin/lsp-checker src/
+vendor/bin/php-solid src/
 ```
 
 The classes (and their contracts — interfaces, parent classes) must be loadable. If a `vendor/autoload.php` is found in or near the target directory, it is included automatically.
@@ -93,10 +93,10 @@ The classes (and their contracts — interfaces, parent classes) must be loadabl
 Use `--config <file>` to load a PHP file that **returns** a `Tivins\LSP\Config` instance. The config defines which directories and files to scan, and optional exclusions:
 
 ```bash
-vendor/bin/lsp-checker --config lsp-config.php
+vendor/bin/php-solid --config config.php
 ```
 
-Example config file (e.g. `lsp-config.php`):
+Example config file (e.g. copy `config-example.php` to `config.php`):
 
 ```php
 <?php
@@ -117,20 +117,20 @@ return (new Config())
 - **`excludeDirectory($path)`** — Skip that directory and its contents when scanning.
 - **`excludeFile($path)`** — Skip that file even if it would be included by a directory.
 
-Paths are resolved relative to the **current working directory** when you run the checker (e.g. when you run `vendor/bin/lsp-checker --config lsp-config.php` from your project root, `addDirectory('src')` refers to `./src`).
+Paths are resolved relative to the **current working directory** when you run the checker (e.g. when you run `vendor/bin/php-solid --config config.php` from your project root, `addDirectory('src')` refers to `./src`).
 
 Without a directory and without `--config`, the script prints usage and exits:
 
 ```bash
-vendor/bin/lsp-checker
-# Usage: lsp-checker <directory> [--config <file>] [--json] [--quiet]
-#        lsp-checker --config <file> [--json] [--quiet]
+vendor/bin/php-solid
+# Usage: php-solid <directory> [--config <file>] [--json] [--quiet]
+#        php-solid --config <file> [--json] [--quiet]
 #   ...
 ```
 
 ### Run unit tests
 
-The example classes in `liskov-principles-violation-example.php` are used by PHPUnit tests:
+The example classes in `examples/liskov-violation-example.php` are used by PHPUnit tests:
 
 ```bash
 composer install
@@ -157,17 +157,17 @@ So you can capture only the result in a file and keep logs separate.
 
 | Goal | Command |
 |------|--------|
-| Save JSON report to a file | `vendor/bin/lsp-checker src/ --json > report.json` |
-| Save human result, hide progress | `vendor/bin/lsp-checker src/ --quiet > result.txt` |
-| Save progress/summary to a log | `vendor/bin/lsp-checker src/ 2> progress.log` (result stays on terminal) |
-| JSON only, no progress (e.g. CI) | `vendor/bin/lsp-checker src/ --json --quiet 2>/dev/null` |
-| Result to file, progress to another file | `vendor/bin/lsp-checker src/ --json > report.json 2> progress.log` |
-| Use a config file | `vendor/bin/lsp-checker --config lsp-config.php` |
+| Save JSON report to a file | `vendor/bin/php-solid src/ --json > report.json` |
+| Save human result, hide progress | `vendor/bin/php-solid src/ --quiet > result.txt` |
+| Save progress/summary to a log | `vendor/bin/php-solid src/ 2> progress.log` (result stays on terminal) |
+| JSON only, no progress (e.g. CI) | `vendor/bin/php-solid src/ --json --quiet 2>/dev/null` |
+| Result to file, progress to another file | `vendor/bin/php-solid src/ --json > report.json 2> progress.log` |
+| Use a config file | `vendor/bin/php-solid --config config.php` |
 
 To pipe the JSON into another tool (e.g. [jq](https://jqlang.github.io/jq/)), use `--json --quiet` so only JSON goes to stdout:
 
 ```bash
-vendor/bin/lsp-checker src/ --json --quiet | jq '.violations | length'
+vendor/bin/php-solid src/ --json --quiet | jq '.violations | length'
 ```
 
 The JSON report is an object with two keys:

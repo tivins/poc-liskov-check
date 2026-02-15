@@ -8,3 +8,6 @@ vendor
 .idea
 .cursor
 .vscode
+
+# Documentation
+docs/internal
