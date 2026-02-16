@@ -10,9 +10,9 @@ use Tivins\Solid\Process\ClassFinder;
 use Tivins\Solid\Process\FormatType;
 use Tivins\Solid\Process\StdWriter;
 
-$autoload = __DIR__ . '/../autoload.php';
+$autoload = '../autoload.php';
 if (!is_file($autoload)) {
-    throw new Exception('"vendor/autoload.php" not found. Run via vendor/bin/php-solid from your project root after composer require tivins/php-solid.');
+    throw new Exception("\"vendor/autoload.php\" not found ($autoload). Run via vendor/bin/php-solid from your project root after composer require tivins/php-solid.");
 }
 require $autoload;
 
